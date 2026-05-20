@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>ShopMS - Shop Management System</title>
+    <script>
+      (function () {
+        var key = 'shopms-theme-preference'
+        var stored = localStorage.getItem(key)
+        var theme = stored === 'dark' ? 'dark' : 'light'
+        document.documentElement.setAttribute('data-theme', theme)
+      })()
+    </script>
+    <style>
+      html[data-theme='dark'] {
+        background: #111827;
+        color: #f3f4f6;
+      }
+
+      html[data-theme='light'] {
+        background: #f4f7f6;
+        color: #2d3436;
+      }
+
+      body {
+        margin: 0;
+        background: inherit;
+        color: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
