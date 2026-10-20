@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="robots" content="noindex" />
+  <title>Redirecting…</title>
+  <script>
+    (function () {
+      var path = window.location.pathname
+      var base = '/Shop-Management-System'
+      var route = path.indexOf(base + '/') === 0 ? path.slice(base.length + 1) : ''
+      var query = window.location.search.slice(1)
+      var hash = window.location.hash
+      window.location.replace(
+        base + '/?p=' + encodeURIComponent(route) +
+        '&q=' + encodeURIComponent(query) +
+        '&h=' + encodeURIComponent(hash)
+      )
+    })()
+  </script>
+</head>
+<body>
+  <p>Redirecting to ShopMS…</p>
+</body>
+</html>
