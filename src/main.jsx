@@ -12,18 +12,6 @@ window.alert = (message) => {
   }))
 }
 
-// Register Service Worker for Offline PWA support
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(registration => {
-      console.log('SW registered: ', registration);
-    }).catch(registrationError => {
-      console.log('SW registration failed: ', registrationError);
-    });
-  });
-}
-
-console.log('CODE_SYNC_DEBUG: ' + new Date().toISOString())
 applyThemePreference(readStoredThemePreference())
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
