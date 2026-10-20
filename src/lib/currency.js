@@ -1,4 +1,5 @@
 export const COUNTRY_CURRENCY_OPTIONS = [
+  { country: 'Bangladesh', currency: 'BDT', symbol: '৳', locale: 'en-BD' },
   { country: 'Malawi', currency: 'MWK', symbol: 'MK', locale: 'en-MW' },
   { country: 'Zambia', currency: 'ZMW', symbol: 'ZK', locale: 'en-ZM' },
   { country: 'Tanzania', currency: 'TZS', symbol: 'TSh', locale: 'sw-TZ' },
@@ -9,8 +10,8 @@ export const COUNTRY_CURRENCY_OPTIONS = [
   { country: 'United Kingdom', currency: 'GBP', symbol: 'GBP', locale: 'en-GB' }
 ]
 
-export const DEFAULT_COUNTRY = 'Malawi'
-export const DEFAULT_CURRENCY = 'MWK'
+export const DEFAULT_COUNTRY = 'Bangladesh'
+export const DEFAULT_CURRENCY = 'BDT'
 
 export const getCurrencyOptionByCountry = (country) => (
   COUNTRY_CURRENCY_OPTIONS.find((option) => option.country === country) || COUNTRY_CURRENCY_OPTIONS[0]
