@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus, UserCircle, Shield, Trash2, Store, Lock, User, AlertTriangle, CheckCircle, Banknote } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { useShop } from '../context/ShopContext'
@@ -11,7 +10,6 @@ import { downloadListReport } from '../lib/reportGenerator'
 import { Download } from 'lucide-react'
 
 const Staff = () => {
-  const navigate = useNavigate()
   const { currentShop, shops, userProfile, formatCurrency, currencyPreference, showSuccess } = useShop()
   
   const [activeTab, setActiveTab] = useState('directory') // 'directory' | 'salaries'
@@ -62,32 +60,27 @@ const Staff = () => {
   const handleAddStaff = async (e) => {
     e.preventDefault()
     setLoading(true)
-    
+
     try {
       const selectedShop = shops.find(s => s.id === formData.shop_id)
       if (!selectedShop) throw new Error('Please select a shop')
-      
-      const staffEmail = `${formData.name.toLowerCase().replace(/\s/g, '')}.${selectedShop.name.toLowerCase().replace(/\s/g, '')}@sms.com`
-      
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: staffEmail,
-        password: formData.password,
-        options: { data: { full_name: formData.name } }
+
+      const { error } = await supabase.functions.invoke('create-staff-member', {
+        body: {
+          name: formData.name.trim(),
+          shop_id: formData.shop_id,
+          role: formData.role,
+          password: formData.password
+        }
       })
-      if (authError) throw authError
+      if (error) throw error
 
-      const { error: profileError } = await supabase.from('profiles').upsert([{ 
-        id: authData.user.id, full_name: formData.name, role: formData.role, shop_id: formData.shop_id 
-      }])
-      if (profileError) throw profileError
-
-      await supabase.auth.signOut()
-      alert(`Staff ${formData.name} added successfully!\n\nIMPORTANT: For security, you have been signed out. Please log back in with your Owner account.`)
-      
       setShowModal(false)
-      navigate('/login')
+      setFormData({ name: '', password: '', shop_id: selectedShop.id, role: 'Cashier' })
+      showSuccess(`Staff ${formData.name.trim()} added. Give them the shop name, staff name, and password to log in.`)
+      await fetchData()
     } catch (err) {
-      alert('Error adding staff: ' + err.message)
+      alert('Error adding staff: ' + (err.message || 'Please try again.'))
     } finally {
       setLoading(false)
     }
