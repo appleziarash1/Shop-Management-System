@@ -229,7 +229,7 @@ const Layout = () => {
                     </div>
                   )}
                 </div>
-                <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '13px' }}>{currentShop?.location || 'Malawi'}</p>
+                <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '13px' }}>{currentShop?.location || userProfile?.country_residence || 'Bangladesh'}</p>
                 {currentShop?.id && currentShop.id !== 'all' && (
                   <p style={{ color: currentShopAccess.canModify ? 'var(--success)' : 'var(--danger)', fontSize: '11px', margin: '2px 0 0' }}>
                     {currentShopAccess.statusLabel}
