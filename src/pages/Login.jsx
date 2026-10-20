@@ -114,18 +114,20 @@ const Login = () => {
         setIsStaffLogin(false)
         setIsResetPasswordMode(true)
       } else if (event === 'SIGNED_IN' && session) {
-        // Handle OAuth sign-in (e.g., Google)
-        try {
-          const profile = await ensureOwnerProfile(session.user)
-          if (profile?.role === 'Owner') {
-            await ensureOwnerShop(session.user.id, session.user.user_metadata?.shop_name)
-            navigate('/dashboard')
-          } else {
-            navigate('/sales')
+        // Defer database calls until after the auth state callback releases its lock.
+        window.setTimeout(async () => {
+          try {
+            const profile = await ensureOwnerProfile(session.user)
+            if (profile?.role === 'Owner') {
+              await ensureOwnerShop(session.user.id, session.user.user_metadata?.shop_name)
+              navigate('/dashboard')
+            } else {
+              navigate('/sales')
+            }
+          } catch (err) {
+            setError(getFriendlyErrorMessage(err))
           }
-        } catch (err) {
-          setError(getFriendlyErrorMessage(err))
-        }
+        }, 0)
       }
     })
 
@@ -314,7 +316,7 @@ const Login = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: new URL(import.meta.env.BASE_URL, window.location.origin).toString(),
+          redirectTo: new URL('login', new URL(import.meta.env.BASE_URL, window.location.origin)).toString(),
         },
       })
       if (error) throw error
