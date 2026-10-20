@@ -29,6 +29,7 @@ const Login = () => {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const notifyAuthReady = () => window.dispatchEvent(new Event('shopms:auth-ready'))
   
   // Tabs: Owner vs Staff
   const [isStaffLogin, setIsStaffLogin] = useState(false)
@@ -120,6 +121,7 @@ const Login = () => {
             const profile = await ensureOwnerProfile(session.user)
             if (profile?.role === 'Owner') {
               await ensureOwnerShop(session.user.id, session.user.user_metadata?.shop_name)
+              notifyAuthReady()
               navigate('/dashboard')
             } else {
               navigate('/sales')
@@ -223,6 +225,7 @@ const Login = () => {
         
         // Fetch profile to determine redirect
         const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+        notifyAuthReady()
         if (profile?.role === 'Cashier' || profile?.role === 'Manager') {
           navigate('/sales')
         } else {
@@ -257,6 +260,7 @@ const Login = () => {
 
           const repairedProfile = await ensureOwnerProfile(existingAuthData.user, cleanFullName)
           await ensureOwnerShop(existingAuthData.user.id, cleanShopName)
+          notifyAuthReady()
           if (repairedProfile.role === 'Owner') {
             navigate('/dashboard')
           } else {
@@ -268,6 +272,7 @@ const Login = () => {
         if (authData.session) {
           const ownerProfile = await ensureOwnerProfile(authData.user, cleanFullName)
           await ensureOwnerShop(authData.user.id, cleanShopName)
+          notifyAuthReady()
           if (ownerProfile.role === 'Owner') {
             navigate('/dashboard')
           } else {
@@ -287,6 +292,7 @@ const Login = () => {
         const profile = await ensureOwnerProfile(user)
         if (profile?.role === 'Owner') {
           await ensureOwnerShop(user.id, user.user_metadata?.shop_name)
+          notifyAuthReady()
           navigate('/dashboard')
         } else {
           navigate('/sales')
