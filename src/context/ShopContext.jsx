@@ -145,17 +145,19 @@ export const ShopProvider = ({ children }) => {
       hasInitialFetchStarted.current = true
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const handleAuthReady = () => {
+      window.setTimeout(() => fetchUserData(), 0)
+    }
+    window.addEventListener('shopms:auth-ready', handleAuthReady)
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth event:', event)
-      if (session) {
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          // Always fetch on explicit login to ensure profile is loaded
-          await fetchUserData()
-        } else if (event === 'INITIAL_SESSION' && !hasInitialFetchStarted.current) {
-          // Only fetch on boot if mount didn't already start it
-          await fetchUserData()
-          hasInitialFetchStarted.current = true
-        }
+      if (session && event === 'TOKEN_REFRESHED') {
+        // Run data requests only after Supabase releases the auth event lock.
+        window.setTimeout(() => fetchUserData(), 0)
+      } else if (session && event === 'INITIAL_SESSION' && !hasInitialFetchStarted.current) {
+        window.setTimeout(() => fetchUserData(), 0)
+        hasInitialFetchStarted.current = true
       } else if (event === 'SIGNED_OUT') {
         // ── Fallback cleanup for SIGNED_OUT ──────────────────
         // This is a safety catch for when signOut is called directly
@@ -176,7 +178,10 @@ export const ShopProvider = ({ children }) => {
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      window.removeEventListener('shopms:auth-ready', handleAuthReady)
+      subscription.unsubscribe()
+    }
   }, [fetchUserData])
 
   const showSuccess = (message) => {
