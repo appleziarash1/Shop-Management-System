@@ -10,7 +10,7 @@ export default {
     let createdUserId: string | null = null
     try {
       const { name, shop_id, role, password } = await req.json()
-      const uid = ctx.userClaims?.sub
+      const uid = ctx.userClaims?.id
 
       if (!uid) return json({ error: 'Authentication required' }, 401)
       if (typeof name !== 'string' || !/^[A-Za-z ]{2,60}$/.test(name.trim())) {
