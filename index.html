@@ -8,6 +8,18 @@
     <title>ShopMS - Shop Management System</title>
     <script>
       (function () {
+        var params = new URLSearchParams(window.location.search)
+        var route = params.get('p')
+        if (route !== null) {
+          var query = params.get('q') || ''
+          var hash = params.get('h') || ''
+          var target = '/Shop-Management-System/' + route
+          window.history.replaceState(null, '', target + (query ? '?' + query : '') + hash)
+        }
+      })()
+    </script>
+    <script>
+      (function () {
         var key = 'shopms-theme-preference'
         var stored = localStorage.getItem(key)
         var theme = stored === 'dark' ? 'dark' : 'light'
