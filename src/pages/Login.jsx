@@ -254,7 +254,10 @@ const Login = () => {
         const { data: authData, error: authError } = await supabase.auth.signUp({ 
           email: cleanEmail, 
           password,
-          options: { data: { full_name: cleanFullName, shop_name: cleanShopName } }
+          options: {
+            emailRedirectTo: new URL(import.meta.env.BASE_URL, window.location.origin).toString(),
+            data: { full_name: cleanFullName, shop_name: cleanShopName }
+          }
         })
         if (authError) {
           const duplicateAccount =
@@ -613,7 +616,7 @@ const Login = () => {
                 <Mail style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} size={18} />
                 <input 
                   type="email" 
-                  placeholder="admin@shop.com" 
+                  placeholder="Enter your email" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   style={{ width: '100%', padding: '12px 12px 12px 40px', borderRadius: '8px', border: '1px solid var(--border)', outline: 'none' }}
@@ -688,7 +691,7 @@ const Login = () => {
                     <Mail style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} size={18} />
                     <input 
                       type="email" 
-                      placeholder="admin@shop.com" 
+                      placeholder="Enter your email" 
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       style={{ width: '100%', padding: '12px 12px 12px 40px', borderRadius: '8px', border: '1px solid var(--border)', outline: 'none' }}
@@ -718,7 +721,7 @@ const Login = () => {
                 <Lock style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} size={18} />
                 <input 
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••" 
+                  placeholder="Enter your password" 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   style={{ width: '100%', padding: '12px 44px 12px 40px', borderRadius: '8px', border: '1px solid var(--border)', outline: 'none' }}
