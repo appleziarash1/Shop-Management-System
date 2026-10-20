@@ -118,6 +118,7 @@ const Login = () => {
         try {
           const profile = await ensureOwnerProfile(session.user)
           if (profile?.role === 'Owner') {
+            await ensureOwnerShop(session.user.id, session.user.user_metadata?.shop_name)
             navigate('/dashboard')
           } else {
             navigate('/sales')
@@ -157,6 +158,28 @@ const Login = () => {
     return createdProfile
   }
 
+  const ensureOwnerShop = async (userId, shopName = '') => {
+    const { data: existingShop, error: lookupError } = await supabase
+      .from('shops')
+      .select('id')
+      .eq('owner_id', userId)
+      .limit(1)
+      .maybeSingle()
+
+    if (lookupError) throw lookupError
+    if (existingShop) return existingShop
+
+    const cleanShopName = sanitizeName(shopName) || 'My Shop'
+    const { data: createdShop, error: createShopError } = await supabase
+      .from('shops')
+      .insert({ owner_id: userId, name: cleanShopName })
+      .select('id')
+      .single()
+
+    if (createShopError) throw createShopError
+    return createdShop
+  }
+
   const handleGoogleSignIn = async () => {
     setLoading(true)
     setError(null)
@@ -164,7 +187,7 @@ const Login = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: new URL(import.meta.env.BASE_URL, window.location.origin).toString()
         }
       })
       if (error) throw error
@@ -231,7 +254,7 @@ const Login = () => {
         const { data: authData, error: authError } = await supabase.auth.signUp({ 
           email: cleanEmail, 
           password,
-          options: { data: { full_name: cleanFullName } }
+          options: { data: { full_name: cleanFullName, shop_name: cleanShopName } }
         })
         if (authError) {
           const duplicateAccount =
@@ -255,9 +278,9 @@ const Login = () => {
           return
         }
 
-        await ensureOwnerShop(authData.user.id, shopName)
-
         if (authData.session) {
+          const ownerProfile = await ensureOwnerProfile(authData.user, cleanFullName)
+          await ensureOwnerShop(authData.user.id, cleanShopName)
           if (ownerProfile.role === 'Owner') {
             navigate('/dashboard')
           } else {
@@ -276,6 +299,7 @@ const Login = () => {
         setFailedAttempts(0)
         const profile = await ensureOwnerProfile(user)
         if (profile?.role === 'Owner') {
+          await ensureOwnerShop(user.id, user.user_metadata?.shop_name)
           navigate('/dashboard')
         } else {
           navigate('/sales')
@@ -304,7 +328,7 @@ const Login = () => {
     setError(null)
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/login?mode=reset`,
+        redirectTo: new URL('login?mode=reset', new URL(import.meta.env.BASE_URL, window.location.origin)).toString(),
       })
       if (error) throw error
       setResetSent(true)
