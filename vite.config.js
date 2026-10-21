@@ -3,6 +3,6 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/Shop-Management-System/',
+  base: process.env.NETLIFY === 'true' ? '/' : '/Shop-Management-System/',
   plugins: [react()],
 })
