@@ -80,7 +80,14 @@ const Staff = () => {
       showSuccess(`Staff ${formData.name.trim()} added. Give them the shop name, staff name, and password to log in.`)
       await fetchData()
     } catch (err) {
-      alert('Error adding staff: ' + (err.message || 'Please try again.'))
+      let message = err.message || 'Please try again.'
+      if (err.context && typeof err.context.clone === 'function') {
+        try {
+          const responseBody = await err.context.clone().json()
+          if (typeof responseBody?.error === 'string') message = responseBody.error
+        } catch { /* keep the original function error */ }
+      }
+      alert('Error adding staff: ' + message)
     } finally {
       setLoading(false)
     }
@@ -380,7 +387,7 @@ const Staff = () => {
                 <label style={{ display: 'block', fontSize: '14px', marginBottom: '8px' }}>Full Name</label>
                 <div style={{ position: 'relative' }}>
                   <UserCircle style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} size={16} />
-                  <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} style={{ width: '100%', padding: '10px 10px 10px 34px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--surface-muted)', color: 'var(--text-main)' }} placeholder="Enter staff name" required />
+                  <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} style={{ width: '100%', padding: '10px 10px 10px 34px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--surface-muted)', color: 'var(--text-main)' }} placeholder="English letters and spaces only" pattern="[A-Za-z ]{2,60}" title="Use 2–60 English letters and spaces." required />
                 </div>
               </div>
               <div style={{ marginBottom: '16px' }}>
@@ -392,6 +399,7 @@ const Staff = () => {
                     {shops.map(s => <option key={s.id} value={s.id}>{s.name} ({s.location})</option>)}
                   </select>
                 </div>
+                <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--text-muted)' }}>Staff login currently uses English letters and spaces in the staff and shop names.</p>
               </div>
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', fontSize: '14px', marginBottom: '8px' }}>Staff Role</label>
@@ -407,7 +415,7 @@ const Staff = () => {
                 <label style={{ display: 'block', fontSize: '14px', marginBottom: '8px' }}>Create Password</label>
                 <div style={{ position: 'relative' }}>
                   <Lock style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} size={16} />
-                  <input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} style={{ width: '100%', padding: '10px 10px 10px 34px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--surface-muted)', color: 'var(--text-main)' }} placeholder="8+ chars, uppercase, lowercase & number" required minLength={8} />
+                  <input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} style={{ width: '100%', padding: '10px 10px 10px 34px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--surface-muted)', color: 'var(--text-main)' }} placeholder="8+ chars, uppercase, lowercase & number" title="Use 8–72 characters with at least one uppercase letter, lowercase letter, and number." required minLength={8} maxLength={72} pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{8,72}" />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
