@@ -33,8 +33,6 @@ const Login = () => {
   
   // Tabs: Owner vs Staff
   const [isStaffLogin, setIsStaffLogin] = useState(false)
-  // Owner Sub-tabs: Sign In vs Sign Up
-  const [isSignUp, setIsSignUp] = useState(false)
   const [isForgotPassword, setIsForgotPassword] = useState(false)
   const [isResetPasswordMode, setIsResetPasswordMode] = useState(false)
   const [resetSent, setResetSent] = useState(false)
@@ -44,8 +42,6 @@ const Login = () => {
   // Form Fields
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [fullName, setFullName] = useState('')
-  const [shopName, setShopName] = useState('')
   
   // Staff Specific
   const [staffName, setStaffName] = useState('')
@@ -56,8 +52,7 @@ const Login = () => {
   const [showNewPassword,     setShowNewPassword]     = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
-  // ── Live password strength (for signup + reset forms) ──────────
-  const signupStrength = useMemo(() => validatePassword(password),    [password])
+  // ── Live password strength for password reset ──────────
   const resetStrength  = useMemo(() => validatePassword(newPassword), [newPassword])
 
   // ── Rate-limit / lockout state ─────────────────────────────
@@ -101,7 +96,6 @@ const Login = () => {
     const url = new URL(window.location.href)
     if (url.searchParams.get('mode') === 'reset') {
       setIsForgotPassword(false)
-      setIsSignUp(false)
       setIsStaffLogin(false)
       setIsResetPasswordMode(true)
     }
@@ -111,7 +105,6 @@ const Login = () => {
         setError(null)
         setResetSent(false)
         setIsForgotPassword(false)
-        setIsSignUp(false)
         setIsStaffLogin(false)
         setIsResetPasswordMode(true)
       } else if (event === 'SIGNED_IN' && session) {
@@ -192,10 +185,8 @@ const Login = () => {
     
     // ── Input Sanitization ──────────────────────────────────────
     const cleanEmail     = sanitizeEmail(email)
-    const cleanFullName  = sanitizeName(fullName)
     const cleanStaffName = sanitizeName(staffName)
     const cleanBranch    = sanitizeName(branchName)
-    const cleanShopName  = sanitizeName(shopName)
 
     const identifier = isStaffLogin 
       ? `${cleanStaffName.toLowerCase().replace(/\s/g, '')}.${cleanBranch.toLowerCase().replace(/\s/g, '')}@sms.com`
@@ -231,57 +222,6 @@ const Login = () => {
         } else {
           navigate('/dashboard')
         }
-      } else if (isSignUp) {
-        if (!nameRegex.test(fullName)) {
-          throw new Error('Full name should only contain letters and spaces.')
-        }
-        // ── Enforce strong password policy before calling Supabase ──
-        assertPasswordPolicy(password)
-        // Owner Sign Up
-        const { data: authData, error: authError } = await supabase.auth.signUp({ 
-          email: cleanEmail, 
-          password,
-          options: {
-            emailRedirectTo: new URL(import.meta.env.BASE_URL, window.location.origin).toString(),
-            data: { full_name: cleanFullName, shop_name: cleanShopName }
-          }
-        })
-        if (authError) {
-          const duplicateAccount =
-            authError.message?.toLowerCase().includes('already registered') ||
-            authError.message?.toLowerCase().includes('already been registered')
-
-          if (!duplicateAccount) throw authError
-
-          const { data: existingAuthData, error: existingSignInError } = await supabase.auth.signInWithPassword({ email: cleanEmail, password })
-          if (existingSignInError) {
-            throw new Error('This email is already registered. Sign in with your password or use Forgot Password to reset it.')
-          }
-
-          const repairedProfile = await ensureOwnerProfile(existingAuthData.user, cleanFullName)
-          await ensureOwnerShop(existingAuthData.user.id, cleanShopName)
-          notifyAuthReady()
-          if (repairedProfile.role === 'Owner') {
-            navigate('/dashboard')
-          } else {
-            navigate('/sales')
-          }
-          return
-        }
-
-        if (authData.session) {
-          const ownerProfile = await ensureOwnerProfile(authData.user, cleanFullName)
-          await ensureOwnerShop(authData.user.id, cleanShopName)
-          notifyAuthReady()
-          if (ownerProfile.role === 'Owner') {
-            navigate('/dashboard')
-          } else {
-            navigate('/sales')
-          }
-        } else {
-          alert('Account created! Please log in.')
-          setIsSignUp(false)
-        }
       } else {
         // Owner Login
         const { data: { user }, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password })
@@ -300,14 +240,12 @@ const Login = () => {
       }
     } catch (err) {
       // ── Record failure + apply progressive delay ──
-      if (!isSignUp) {
-        setDelayActive(true)
-        const result = await recordFailedAttempt(identifier)
-        setDelayActive(false)
-        setFailedAttempts(result.attempt)
-        if (result.isLockedOut) {
-          startCountdown(10 * 60 * 1000) // 10-minute lockout
-        }
+      setDelayActive(true)
+      const result = await recordFailedAttempt(identifier)
+      setDelayActive(false)
+      setFailedAttempts(result.attempt)
+      if (result.isLockedOut) {
+        startCountdown(10 * 60 * 1000) // 10-minute lockout
       }
       setError(getFriendlyErrorMessage(err))
     } finally {
@@ -440,19 +378,19 @@ const Login = () => {
             />
           </div>
           <h2 style={{ fontSize: '24px', margin: '0 0 4px 0', lineHeight: '1.2' }}>
-            {isResetPasswordMode ? 'Create New Password' : (isForgotPassword ? 'Reset Password' : (isSignUp ? 'Create Account' : (isStaffLogin ? 'Staff Login' : 'Owner Login')))}
+            {isResetPasswordMode ? 'Create New Password' : (isForgotPassword ? 'Reset Password' : (isStaffLogin ? 'Staff Login' : 'Owner Login'))}
           </h2>
           <p style={{ color: 'var(--text-muted)', margin: '0', fontSize: '13px', lineHeight: '1.4' }}>
             {isResetPasswordMode
               ? 'Enter your new password below to finish resetting your account'
               : (isForgotPassword 
               ? 'Enter your email to receive a reset link' 
-              : (isSignUp ? 'Start managing your shops today' : 'Access your shop dashboard'))}
+              : 'Access your shop dashboard')}
           </p>
         </div>
 
         {/* Role Toggle */}
-        {!isSignUp && !isForgotPassword && (
+        {!isForgotPassword && (
           <div style={{ display: 'flex', background: 'var(--surface-muted)', padding: '4px', borderRadius: '8px', marginBottom: '20px' }}>
             <button 
               onClick={() => setIsStaffLogin(false)}
@@ -677,21 +615,6 @@ const Login = () => {
               </>
             ) : (
               <>
-                {isSignUp && (
-                  <>
-                    <div style={{ marginBottom: '20px' }}>
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>Full Name</label>
-                      <input 
-                        type="text" 
-                        placeholder="Your Name" 
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', outline: 'none' }}
-                        required 
-                      />
-                    </div>
-                  </>
-                )}
                 <div style={{ marginBottom: '20px' }}>
                   <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>Email Address</label>
                   <div style={{ position: 'relative' }}>
@@ -706,23 +629,10 @@ const Login = () => {
                     />
                   </div>
                 </div>
-                {isSignUp && (
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>Initial Shop Name</label>
-                    <input 
-                      type="text" 
-                      placeholder="My First Shop" 
-                      value={shopName}
-                      onChange={(e) => setShopName(e.target.value)}
-                      style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', outline: 'none' }}
-                      required 
-                    />
-                  </div>
-                )}
               </>
             )}
 
-            <div style={{ marginBottom: isSignUp ? '8px': '20px' }}>
+            <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>Password</label>
               <div style={{ position: 'relative' }}>
                 <Lock style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} size={18} />
@@ -739,11 +649,9 @@ const Login = () => {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              {/* Show meter only on Sign Up */}
-              {isSignUp && <PasswordStrengthMeter value={password} />}
             </div>
 
-            {!isSignUp && !isStaffLogin && (
+            {!isStaffLogin && (
               <div style={{ textAlign: 'right', marginBottom: '16px' }}>
                 <button 
                   type="button" 
@@ -756,11 +664,11 @@ const Login = () => {
             )}
             <button type="submit" className="btn btn-primary" 
               style={{
-                width: '100%', justifyContent: 'center', padding: '14px', marginTop: isSignUp ? '8px' : '0',
+                width: '100%', justifyContent: 'center', padding: '14px',
                 opacity: (isLockedOut || delayActive) ? 0.6 : 1,
                 cursor: (isLockedOut || delayActive) ? 'not-allowed' : 'pointer',
               }} 
-              disabled={loading || delayActive || isLockedOut || (isSignUp && !signupStrength.passed)}>
+              disabled={loading || delayActive || isLockedOut}>
               {isLockedOut ? (
                 <><Timer size={18} /><span>Locked — {formatCountdown(lockoutMs)}</span></>
               ) : delayActive ? (
@@ -768,7 +676,7 @@ const Login = () => {
               ) : loading ? 'Processing...' : (
                 <>
                   <LogIn size={20} />
-                  <span>{isSignUp ? 'Create Account' : 'Sign In'}</span>
+                  <span>Sign In</span>
                 </>
               )}
             </button>
@@ -791,17 +699,6 @@ const Login = () => {
         )}
 
         <div style={{ marginTop: '20px', textAlign: 'center' }}>
-          {!isStaffLogin && !isForgotPassword && (
-            <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
-              {isSignUp ? 'Already have an account?' : 'Need to grow your business?'} 
-              <button 
-                onClick={() => setIsSignUp(!isSignUp)}
-                style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: '600', cursor: 'pointer', marginLeft: '5px' }}
-              >
-                {isSignUp ? 'Sign In' : 'Create Account'}
-              </button>
-            </p>
-          )}
           {isStaffLogin && !isForgotPassword && (
             <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
               Login with name and branch provided by your manager.
