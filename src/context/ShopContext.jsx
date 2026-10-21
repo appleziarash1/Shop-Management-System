@@ -67,8 +67,8 @@ export const ShopProvider = ({ children }) => {
           ...profile,
           avatar_url: localProfilePreferences.avatar_url ?? profile.avatar_url ?? null,
           theme_preference: localProfilePreferences.theme_preference || profile.theme_preference || readStoredThemePreference(),
-          country_residence: localProfilePreferences.country_residence || profile.country_residence || DEFAULT_COUNTRY,
-          currency_preference: localProfilePreferences.currency_preference || profile.currency_preference || DEFAULT_CURRENCY
+          country_residence: profile.country_residence || localProfilePreferences.country_residence || DEFAULT_COUNTRY,
+          currency_preference: profile.currency_preference || localProfilePreferences.currency_preference || DEFAULT_CURRENCY
         } : null
 
         setUserProfile(mergedProfile)
