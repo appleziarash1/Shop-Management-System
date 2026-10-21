@@ -132,7 +132,7 @@ const Layout = () => {
             {[
               { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
               { to: '/inventory', icon: Package, label: 'Inventory' },
-              { to: '/sales', icon: ShoppingCart, label: 'Sales' },
+              { to: '/sales', icon: ShoppingCart, label: 'Sell' },
               { to: '/customers', icon: Users, label: 'Customers' },
               { to: '/expenses', icon: Receipt, label: 'Expenses' },
             ].map((link) => (
