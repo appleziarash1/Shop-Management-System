@@ -180,7 +180,7 @@ const Products = () => {
             const newProduct = res.data[0]
             if (newProduct.quantity > 0) {
               const { data: authData } = await supabase.auth.getUser()
-              await supabase.from('purchases').insert([{
+              const { error: purchaseError } = await supabase.from('purchases').insert([{
                 shop_id: finalData.shop_id,
                 product_id: newProduct.id,
                 quantity: newProduct.quantity,
@@ -188,6 +188,7 @@ const Products = () => {
                 selling_price: newProduct.selling_price,
                 created_by: authData?.user?.id
               }])
+              if (purchaseError) console.warn('Initial stock purchase record failed:', purchaseError)
             }
           }
         }
@@ -211,10 +212,16 @@ const Products = () => {
           showSuccess(successMsg)
           return
         } else {
-          console.warn('Supabase save failed, falling back to offline queue...', error)
+          console.error('Supabase product save failed:', error)
+          alert('Could not save product: ' + getFriendlyErrorMessage(error))
+          return
         }
       } catch (err) {
-        console.warn('Network error during save, falling back to offline queue...', err)
+        console.error('Product save request failed:', err)
+        if (isOnline()) {
+          alert('Could not save product: ' + getFriendlyErrorMessage(err))
+          return
+        }
       }
     }
 
