@@ -191,7 +191,7 @@ const Sales = () => {
 
   const totalAmount = cart.reduce((sum, item) => sum + ((item.selling_price || item.price || 0) * item.cartQuantity), 0)
 
-  // 5. Checkout Logic (PWA-tier)
+  // 5. Checkout Logic — complete memo, sale items, and stock in one database transaction.
   const handleCheckout = async () => {
     if (cart.length === 0 || isProcessing) return
     if (!canModifyCurrentShop) {
@@ -200,18 +200,17 @@ const Sales = () => {
     }
 
     setIsProcessing(true)
-    
+
     try {
       const salePayload = {
-        sale: { 
-          shop_id:       currentShop.id, 
-          customer_id:   selectedCustomerId, 
-          total_amount:  totalAmount, 
+        sale: {
+          shop_id: currentShop.id,
+          customer_id: selectedCustomerId,
+          total_amount: totalAmount,
           payment_method: paymentMethod,
-          // ── Accountability fields ──────────────────────────
-          session_id:    activeSession?.id    || null,
+          session_id: activeSession?.id || null,
           employee_name: userProfile?.full_name || null,
-          created_by:    userProfile?.id        || null
+          created_by: userProfile?.id || null
         },
         items: cart.map(item => ({
           product_id: item.isService ? null : item.id,
@@ -222,81 +221,43 @@ const Sales = () => {
           total_price: (item.selling_price || item.price) * item.cartQuantity
         }))
       }
-      const receiptItems = cart.map((item) => ({
+      const receiptItems = cart.map(item => ({
         name: item.name,
         quantity: item.cartQuantity,
         unit_price: item.selling_price || item.price,
         total_price: (item.selling_price || item.price) * item.cartQuantity
       }))
-      const customerName = customers.find((customer) => customer.id === selectedCustomerId)?.name || 'Walk-in Customer'
+      const customerName = customers.find(customer => customer.id === selectedCustomerId)?.name || 'Walk-in Customer'
 
-      // Try live checkout first
       if (isOnline()) {
-        console.log('Attempting online checkout')
-        try {
-          const { data: sale, error: saleErr } = await supabase.from('sales').insert([salePayload.sale]).select().single()
-          if (saleErr) throw saleErr;
-          
-          const saleItems = salePayload.items.map(si => ({ ...si, sale_id: sale.id }));
-          const { error: itemsErr } = await supabase.from('sale_items').insert(saleItems);
-          if (itemsErr) throw itemsErr;
+        const { data: sale, error } = await supabase.rpc('complete_sale', {
+          p_sale: salePayload.sale,
+          p_items: salePayload.items
+        })
+        if (error) throw error
 
-          // Inventory update
-          for (const item of cart) {
-            if (!item.isService) {
-              console.log('Decrementing inventory for product:', item.id, 'amount:', item.cartQuantity)
-              const { data, error: rpcError } = await supabase.rpc('decrement_inventory', {
-                row_id: item.id,
-                amount: item.cartQuantity,
-                action_type: 'SALE',
-                notes: `Sale to ${customerName}`,
-                user_id: userProfile?.id
-              })
-
-              if (rpcError) {
-                console.error('Inventory decrement failed for item:', item.id, rpcError)
-                throw new Error(`Inventory update failed for ${item.name}: ${rpcError.message}`)
-              }
-              
-              console.log('Decrement inventory result:', data)
-            }
+        const itemSummary = cart.map(item => `${item.cartQuantity}x ${item.name}`).join(', ')
+        logAuditEvent({
+          actionType: 'SALE',
+          description: `Sold: ${itemSummary} — Total: ${formatCurrency(totalAmount)}`,
+          metadata: {
+            sale_id: sale.id,
+            total_amount: totalAmount,
+            payment_method: paymentMethod,
+            items_count: cart.length,
+            customer_name: customerName
           }
-          
-          // Log audit event for this sale (fire-and-forget)
-          const itemSummary = cart.map(i => `${i.cartQuantity}x ${i.name}`).join(', ')
-          logAuditEvent({
-            actionType:  'SALE',
-            description: `Sold: ${itemSummary} — Total: ${formatCurrency(totalAmount)}`,
-            metadata: {
-              sale_id:        sale.id,
-              total_amount:   totalAmount,
-              payment_method: paymentMethod,
-              items_count:    cart.length,
-              customer_name:  customerName,
-            }
-          })
+        })
 
-          downloadReceiptPdf({
-            sale,
-            items: receiptItems,
-            shop: currentShop,
-            customerName,
-            formatCurrency
-          })
-
-          setCart([])
-          await loadData()
-          refreshData(true)
-          showSuccess('Sale Completed Successfully!')
-          setIsProcessing(false)
-          return
-        } catch (err) {
-          console.error('Live checkout failed, falling back to offline queue...', err)
-        }
+        downloadReceiptPdf({ sale, items: receiptItems, shop: currentShop, customerName, formatCurrency })
+        setCart([])
+        await loadData()
+        refreshData(true)
+        showSuccess('Sale Completed Successfully!')
+        return
       }
 
-      // Offline Fallback
-      console.log('Falling back to offline checkout')
+      // Offline sales stay local until the browser reconnects.
       await enqueueSale(salePayload)
       const count = await getQueueCount()
       setPendingSync(count)
@@ -313,11 +274,11 @@ const Sales = () => {
       })
       showSuccess(`Sale saved locally! (${count} queued)`)
       setCart([])
-      setIsProcessing(false)
-      await loadData() // Refresh from local IndexedDB
+      await loadData()
     } catch (error) {
       console.error('Checkout failed:', error)
       alert('Failed to process sale: ' + (error.message || 'Unknown error'))
+    } finally {
       setIsProcessing(false)
     }
   }
@@ -346,7 +307,7 @@ const Sales = () => {
       <div className="pos-products-area" style={{ marginTop: (!isNetworkOnline || syncMessage) ? '45px' : '0' }}>
         <div style={{ marginBottom: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h1 style={{ fontSize: '24px' }}>Point of Sale</h1>
+            <h1 style={{ fontSize: '24px' }}>Sell / Memo</h1>
             
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <div style={{ display: 'flex', background: 'var(--surface-muted)', padding: '4px', borderRadius: '8px' }}>
