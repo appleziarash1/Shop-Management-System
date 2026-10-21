@@ -1,0 +1,1 @@
+alter table public.products add column if not exists brand text; alter table public.products add column if not exists unit_size text; alter table public.products add column if not exists image_url text; notify pgrst, 'reload schema';
