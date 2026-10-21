@@ -253,22 +253,6 @@ const Login = () => {
     }
   }
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: new URL('login', new URL(import.meta.env.BASE_URL, window.location.origin)).toString(),
-        },
-      })
-      if (error) throw error
-    } catch (err) {
-      setError(getFriendlyErrorMessage(err))
-      setLoading(false)
-    }
-  }
 
   const handleResetPassword = async (e) => {
     e.preventDefault()
@@ -406,9 +390,6 @@ const Login = () => {
             </button>
           </div>
         )}
-
-        {/* Google Sign-In Button */}
-
 
         {/* ── LOCKOUT BANNER ─────────────────────────────────── */}
         {isLockedOut && (
@@ -683,20 +664,6 @@ const Login = () => {
           </form>
         )}
 
-        {!isStaffLogin && !isForgotPassword && !isResetPasswordMode && (
-          <div style={{ marginTop: '18px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--text-muted)', fontSize: '12px', marginBottom: '14px' }}>
-              <span style={{ flex:  1, height: '1px', background: 'var(--border)' }} />
-              <span>OR CONTINUE WITH</span>
-              <span style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
-            </div>
-            <button type="button" onClick={handleGoogleSignIn} disabled={loading}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--surface-elevated)', color: 'var(--text-main)', fontWeight: '600', cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.7 : 1 }}>
-              <span aria-hidden="true" style={{ fontSize: '17px', fontWeight: '700' }}>G</span>
-              Continue with Google
-            </button>
-          </div>
-        )}
 
         <div style={{ marginTop: '20px', textAlign: 'center' }}>
           {isStaffLogin && !isForgotPassword && (
