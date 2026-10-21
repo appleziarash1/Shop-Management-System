@@ -33,13 +33,8 @@ export const enqueueSale = async (salePayload) => {
     if (item.product_id) {
       const product = await idbService.get('products', item.product_id);
       if (product) {
-        product.quantity -= item.quantity;
-        if (product.quantity <= 0) {
-          // Delete product from local cache when quantity reaches 0
-          await idbService.delete('products', item.product_id);
-        } else {
-          await idbService.put('products', product);
-        }
+        product.quantity = Math.max(0, product.quantity - item.quantity);
+        await idbService.put('products', product);
       }
     }
   }
@@ -177,26 +172,12 @@ export const processSyncQueue = async (onProgress) => {
       if (onProgress) onProgress(`Syncing sale ${successCount + 1}...`);
       
       const { sale, items } = item;
-      const { data: newSale, error: saleErr } = await supabase.from('sales').insert([sale]).select().single();
-      if (saleErr) throw saleErr;
-      
-      const saleItems = items.map(si => ({ ...si, sale_id: newSale.id }));
-      const { error: itemsErr } = await supabase.from('sale_items').insert(saleItems);
-      if (itemsErr) throw itemsErr;
-      
-      // Update inventory for products
-      for (const item of items) {
-        if (item.product_id) {
-          await supabase.rpc('decrement_inventory', { 
-            row_id: item.product_id, 
-            amount: item.quantity,
-            action_type: 'SALE',
-            notes: 'Offline sale sync',
-            user_id: item.created_by || null
-          })
-        }
-      }
-      
+      const { error } = await supabase.rpc('complete_sale', {
+        p_sale: { ...sale, offline_id: item.offline_id },
+        p_items: items
+      });
+      if (error) throw error;
+
       await idbService.delete('sales_queue', item.offline_id);
       successCount++;
     } catch (err) {
